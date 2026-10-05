@@ -34,17 +34,23 @@ async def get_live_erlc_info(bot: discord.Client) -> str:
     # 1. Ana botun (<@1544144846875267253>) Presence / Activity'sini oku
     if guild:
         main_bot = guild.get_member(ANA_BOT_ID)
+        if not main_bot:
+            try:
+                main_bot = await guild.fetch_member(ANA_BOT_ID)
+            except Exception:
+                main_bot = None
+
         if main_bot:
             durumlar = []
-            for act in main_bot.activities:
+            for act in getattr(main_bot, 'activities', []):
                 if act and hasattr(act, 'name') and act.name:
                     durumlar.append(f"• `{act.name}`")
             if durumlar:
                 status_lines.append(f"🤖 **Ana Bot ({main_bot.mention}) Canlı Durumu:**\n" + "\n".join(durumlar))
             else:
-                status_lines.append(f"🤖 **Ana Bot ({main_bot.mention}):** `Çevrimiçi (Aktif)`")
+                status_lines.append(f"🤖 **Ana Bot ({main_bot.mention}):** `Sunucuda Aktif`")
         else:
-            status_lines.append(f"🤖 **Ana Bot Durumu:** Sunucu üzerinden sorgulanamadı")
+            status_lines.append("🤖 **Ana Bot Durumu:** Sunucu üzerinden sorgulanamadı")
 
     # 2. Eğer ERLC_API_KEY tanımlıysa doğrudan API sorgula
     if ERLC_API_KEY:

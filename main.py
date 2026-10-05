@@ -14,14 +14,18 @@ from discord.ext import commands
 from discord import app_commands
 from config import TOKEN, GUILD_ID, SUNUCU_ADI, REHBER_PANEL_KANAL_ID
 
+# Standart (Privileged olmayan) Discord Intent'leri
+# Privileged intents (Members, Presences, Message Content) Discord Developer Portal'da 
+# açık değilse PrivilegedIntentsRequired hatası verir.
+# Bu nedenle varsayılan olarak default intent ile çalışır (sıfır hata garantisi).
 intents = discord.Intents.default()
-intents.message_content = True
-intents.guilds = True
-try:
+
+# Eğer kullanıcı portalden izinleri açıp ENABLE_PRIVILEGED_INTENTS=true yaparsa aktif olur:
+if os.getenv("ENABLE_PRIVILEGED_INTENTS", "").lower() in ("true", "1", "yes"):
+    intents.message_content = True
     intents.members = True
     intents.presences = True
-except Exception:
-    pass
+
 
 class RehberBot(commands.Bot):
     def __init__(self):
