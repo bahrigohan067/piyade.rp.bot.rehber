@@ -15,7 +15,8 @@ if os.path.exists(env_file):
 # =====================================================================
 TOKEN = os.getenv("TOKEN_REHBER")
 GUILD_ID = int(os.getenv("GUILD_ID", "1529545898294509589"))
-ERLC_API_KEY = os.getenv("ERLC_API_KEY", "").strip()
+ERLC_API_KEY = (os.getenv("ERLC_API_KEY") or os.getenv("ERLC_APİ_KEY") or "").strip()
+
 
 # =====================================================================
 # SUNUCU & ROBLOX BİLGİLERİ

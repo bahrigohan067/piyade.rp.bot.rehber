@@ -31,8 +31,35 @@ async def get_live_erlc_info(bot: discord.Client) -> str:
     guild = bot.get_guild(GUILD_ID)
     status_lines = []
 
-    # 1. Ana botun (<@1544144846875267253>) Presence / Activity'sini oku
-    if guild:
+    # 1. Eğer ERLC_API_KEY tanımlıysa DOĞRUDAN resmi ER:LC API'sinden anlık veri çek
+    api_basarili = False
+    if ERLC_API_KEY:
+        try:
+            headers = {"Server-Key": ERLC_API_KEY}
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://api.erlc.gg/v2/server?Queue=true", headers=headers, timeout=4) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        cur = data.get("CurrentPlayers", 0)
+                        max_p = data.get("MaxPlayers", 40)
+                        q = data.get("Queue", [])
+                        q_count = len(q) if isinstance(q, list) else int(q or 0)
+                        s_name = data.get("Name", "Piyade Roleplay")
+                        sira_str = f"**{q_count} Kişi**" if q_count > 0 else "✨ **Sıra Yok (Hemen Katıl!)**"
+                        
+                        status_lines.append(
+                            f"🌐 **Resmi ER:LC Canlı Sunucu Durumu:**\n"
+                            f"• Sunucu Adı: **{s_name}**\n"
+                            f"• 👥 Aktif Oyuncu: **`{cur} / {max_p}`**\n"
+                            f"• ⏳ Sırada Bekleyen: {sira_str}\n"
+                            f"• 🟢 Durum: **`Açık & Aktif`**"
+                        )
+                        api_basarili = True
+        except Exception:
+            pass
+
+    # 2. Eğer API Key yoksa veya API'ye ulaşılamadıysa: Ana botu (<@1544144846875267253>) kontrol et
+    if not api_basarili and guild:
         main_bot = guild.get_member(ANA_BOT_ID)
         if not main_bot:
             try:
@@ -51,28 +78,6 @@ async def get_live_erlc_info(bot: discord.Client) -> str:
                 status_lines.append(f"🤖 **Ana Bot ({main_bot.mention}):** `Sunucuda Aktif`")
         else:
             status_lines.append("🤖 **Ana Bot Durumu:** Sunucu üzerinden sorgulanamadı")
-
-    # 2. Eğer ERLC_API_KEY tanımlıysa doğrudan API sorgula
-    if ERLC_API_KEY:
-        try:
-            headers = {"Server-Key": ERLC_API_KEY}
-            async with aiohttp.ClientSession() as session:
-                async with session.get("https://api.erlc.gg/v2/server?Queue=true", headers=headers, timeout=4) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        cur = data.get("CurrentPlayers", 0)
-                        max_p = data.get("MaxPlayers", 40)
-                        q = data.get("Queue", [])
-                        q_count = len(q) if isinstance(q, list) else int(q or 0)
-                        s_name = data.get("Name", "Piyade Roleplay")
-                        status_lines.append(
-                            f"🌐 **ER:LC API Canlı Verisi:**\n"
-                            f"• Sunucu: **{s_name}**\n"
-                            f"• Aktif Oyuncu: **{cur} / {max_p}**\n"
-                            f"• Sırada Bekleyen: **{q_count} Kişi**"
-                        )
-        except Exception:
-            pass
 
     # 3. RP Duyuru kanalındaki son mesajdan rol aktifliğini oku
     if guild:
