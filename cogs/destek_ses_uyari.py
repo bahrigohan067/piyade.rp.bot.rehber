@@ -34,10 +34,11 @@ class DestekSesUyari(commands.Cog):
     """
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.lock = asyncio.Lock()
-        self.main_task: asyncio.Task = None
+        self._baglanma_kilit = asyncio.Lock()
+        self._gecikme_gorevi: asyncio.Task | None = None
+        self.main_task: asyncio.Task | None = None
         self.member_joined_event = asyncio.Event()
-        self.test_mode_override: str = None  # None, 'mesai_ici', 'mesai_disi'
+        self.test_mode_override: str | None = None  # None, 'mesai_ici', 'mesai_disi'
         self.current_track_index = 0
         self.active_playing_type = "Beklemede"
 
@@ -47,6 +48,8 @@ class DestekSesUyari(commands.Cog):
 
     def cog_unload(self):
         self.voice_supervisor.cancel()
+        if self._gecikme_gorevi and not self._gecikme_gorevi.done():
+            self._gecikme_gorevi.cancel()
         if self.main_task and not self.main_task.done():
             self.main_task.cancel()
 
@@ -76,37 +79,61 @@ class DestekSesUyari(commands.Cog):
             return False
         return mesai_ici_mi()
 
-    async def ses_baglantisini_sagla(self, channel: discord.VoiceChannel) -> discord.VoiceClient:
+    async def _ses_kanalina_baglan(self) -> discord.VoiceClient | None:
         """
-        Botun ses kanalında kesintisiz bağlı kalmasını sağlar.
-        Kopma olursa otomatik tekrar bağlanır.
+        Botun hedef ses kanalında (DESTEK_BEKLEME_SES_ID) kesintisiz bağlı kalmasını sağlar.
+        Kilit (Lock) mekanizması ile birden fazla bağlantı çağrısının çakışmasını (çık-gir yapmasını) önler.
         """
-        guild = channel.guild
-        voice_client = discord.utils.get(self.bot.voice_clients, guild=guild)
+        async with self._baglanma_kilit:
+            guild = self.bot.get_guild(GUILD_ID)
+            if not guild:
+                return None
 
-        if voice_client and voice_client.is_connected():
-            if voice_client.channel.id != channel.id:
+            channel = guild.get_channel(DESTEK_BEKLEME_SES_ID)
+            if not channel or not isinstance(channel, discord.VoiceChannel):
+                return None
+
+            vc = guild.voice_client
+
+            # 1. Zaten hedef kanalda bağlı ve aktifse dokunma!
+            if vc and vc.is_connected():
+                if vc.channel and vc.channel.id == DESTEK_BEKLEME_SES_ID:
+                    return vc
+                # Başka kanala çekildiyse hedef kanala geri taşı
                 try:
-                    await voice_client.move_to(channel)
+                    await vc.move_to(channel)
+                    print(f"[SES] 🔄 Bot hedef ses kanalına taşındı: {channel.name}", flush=True)
+                    return vc
                 except Exception as e:
-                    print(f"[SES] Kanal değiştirme hatası: {e}", flush=True)
-            return voice_client
+                    print(f"[SES HATA] Kanal taşıma hatası: {e}", flush=True)
 
-        if voice_client and not voice_client.is_connected():
+            # 2. Bağlantı yoksa veya kopmuşsa temizce bağlan
             try:
-                await voice_client.disconnect(force=True)
-            except Exception:
-                pass
-            voice_client = None
+                if vc:
+                    try:
+                        await vc.disconnect(force=True)
+                    except Exception:
+                        pass
+                vc = await channel.connect(reconnect=True, self_deaf=True)
+                print(f"[SES] 🔌 Bot 7/24 ses kanalına bağlandı: {channel.name} ({channel.id})", flush=True)
+                return vc
+            except Exception as e:
+                print(f"[SES HATA] Kanala bağlanırken hata: {e}", flush=True)
+                return None
 
-        try:
-            # self_deaf=True ile bot karşıdan ses almaz, işlemci ve bant genişliği tasarrufu sağlar
-            voice_client = await channel.connect(timeout=20.0, reconnect=True, self_deaf=True)
-            print(f"[SES] 🔌 Bot '{channel.name}' ses kanalına başarıyla bağlandı.", flush=True)
-            return voice_client
-        except Exception as e:
-            print(f"[SES HATA] Kanala bağlanırken hata: {e}", flush=True)
-            return None
+    def _tetikle_gecikmeli_baglan(self, saniye: int = 5):
+        """Kopma anında spam bağlantıyı önlemek için gecikmeli bağlantı kurar."""
+        if self._gecikme_gorevi and not self._gecikme_gorevi.done():
+            self._gecikme_gorevi.cancel()
+
+        async def _bekle_ve_baglan():
+            try:
+                await asyncio.sleep(saniye)
+                await self._ses_kanalina_baglan()
+            except asyncio.CancelledError:
+                pass
+
+        self._gecikme_gorevi = asyncio.create_task(_bekle_ve_baglan())
 
     # =========================================================================
     # KESİNTİSİZ 7/24 SES KONTROL DÖNGÜSÜ
@@ -118,14 +145,15 @@ class DestekSesUyari(commands.Cog):
         mesai içi müziklerini ve mesai dışı tekrarlayan uyarılarını yöneten çekirdek döngü.
         """
         ffmpeg_bin = get_ffmpeg_executable()
+        guild = channel.guild
         print(f"[SES] 🚀 Kesintisiz Ses Denetim Döngüsü Devrede. Hedef Kanal: {channel.name}", flush=True)
 
         while True:
             try:
-                # 1. Ses bağlantısını her zaman aktif tut
-                voice_client = await self.ses_baglantisini_sagla(channel)
-                if not voice_client or not voice_client.is_connected():
-                    await asyncio.sleep(3)
+                vc = guild.voice_client
+                # Bot henüz ses kanalına bağlı değilse veya kopmuşsa bağlantıyı bekle (connect çağırma, bekçi halletsin)
+                if not vc or not vc.is_connected() or not vc.channel or vc.channel.id != channel.id:
+                    await asyncio.sleep(2)
                     continue
 
                 mesai_aktif = self.get_aktif_mesai_durumu()
@@ -135,40 +163,37 @@ class DestekSesUyari(commands.Cog):
                 # -------------------------------------------------------------
                 if mesai_aktif:
                     self.active_playing_type = "Bekleme Müziği (Mesai İçi)"
-                    
-                    # Oynatılacak parçayı seç
                     parca_yolu = BEKLEME_MUZIKLERI[self.current_track_index % len(BEKLEME_MUZIKLERI)]
-                    
+
                     if not os.path.exists(parca_yolu):
                         print(f"[SES HATA] Müzik dosyası bulunamadı: {parca_yolu}", flush=True)
                         await asyncio.sleep(5)
                         continue
 
-                    # Sesi başlat (Rahatlatıcı bekleme seviyesi: %50 volume)
+                    # Sesi başlat
                     try:
-                        if voice_client.is_playing():
-                            voice_client.stop()
+                        if vc.is_playing():
+                            vc.stop()
                         source = discord.PCMVolumeTransformer(
                             discord.FFmpegPCMAudio(parca_yolu, executable=ffmpeg_bin, options="-vn"),
                             volume=0.5
                         )
-                        voice_client.play(source)
+                        vc.play(source)
                         print(f"[SES] 🎵 [Mesai İçi] Çalıyor: Parça #{self.current_track_index + 1} ({os.path.basename(parca_yolu)})", flush=True)
                     except Exception as e:
                         print(f"[SES HATA] Müzik başlatma hatası: {e}", flush=True)
                         await asyncio.sleep(3)
                         continue
 
-                    # Parça çalarken 1 saniyelik aralıklarla mesai değişimini denetle
-                    while voice_client.is_playing():
-                        # Eğer parça çalarken saat 01:00 olur ve mesai biterse: Müziği anında kes!
+                    # Parça çalarken 1 saniyelik aralıklarla kontrol et
+                    while vc.is_connected() and vc.is_playing():
+                        # Saat 01:00 olduysa müziği durdur
                         if not self.get_aktif_mesai_durumu():
                             print("[SES] ⏰ Saat 01:00 oldu! Mesai içi bekleme müziği durduruluyor.", flush=True)
-                            voice_client.stop()
+                            vc.stop()
                             break
                         await asyncio.sleep(1)
 
-                    # Parça bittiğinde bir sonraki parçaya geç
                     self.current_track_index = (self.current_track_index + 1) % len(BEKLEME_MUZIKLERI)
                     await asyncio.sleep(1)
 
@@ -179,9 +204,8 @@ class DestekSesUyari(commands.Cog):
                     self.active_playing_type = "Mesai Dışı Uyarı Modu"
                     insan_sayisi = self.kanaldaki_insan_sayisi(channel)
 
-                    # Kanalda hiç insan yoksa: Bot kanalda kalsın ama sessizce beklesin
+                    # Kanalda insan yoksa sessizce bekle
                     if insan_sayisi == 0:
-                        # Bir üye girdiğinde anında tetiklenmek için event beklemesi (max 3 saniye)
                         try:
                             await asyncio.wait_for(self.member_joined_event.wait(), timeout=3.0)
                             self.member_joined_event.clear()
@@ -189,21 +213,19 @@ class DestekSesUyari(commands.Cog):
                             pass
                         continue
 
-                    # Kanalda en az 1 insan var! Ses kaydını oynat
                     if not os.path.exists(MESAI_SES_DOSYASI):
                         print(f"[SES HATA] Mesai dışı ses dosyası eksik: {MESAI_SES_DOSYASI}", flush=True)
                         await asyncio.sleep(5)
                         continue
 
                     try:
-                        # Uyarı sesi net ve anlaşılır seviyede (%100 volume)
-                        if voice_client.is_playing():
-                            voice_client.stop()
+                        if vc.is_playing():
+                            vc.stop()
                         source = discord.PCMVolumeTransformer(
                             discord.FFmpegPCMAudio(MESAI_SES_DOSYASI, executable=ffmpeg_bin, options="-vn"),
                             volume=1.0
                         )
-                        voice_client.play(source)
+                        vc.play(source)
                         print(f"[SES] 📢 [Mesai Dışı] Uyarı sesi oynatılıyor... (Kanalda {insan_sayisi} üye var)", flush=True)
                     except Exception as e:
                         print(f"[SES HATA] Uyarı sesi başlatma hatası: {e}", flush=True)
@@ -211,32 +233,23 @@ class DestekSesUyari(commands.Cog):
                         continue
 
                     # Ses çalımı bitene kadar bekle
-                    while voice_client.is_playing():
-                        # Oynatılırken herkes odadan çıkarsa kes
+                    while vc.is_connected() and vc.is_playing():
                         if self.kanaldaki_insan_sayisi(channel) == 0:
-                            voice_client.stop()
+                            vc.stop()
                             break
-                        # Oynatılırken saat öğlen 12:00 olursa mesaiye geç
                         if self.get_aktif_mesai_durumu():
-                            voice_client.stop()
+                            vc.stop()
                             break
                         await asyncio.sleep(0.5)
 
-                    # Çalım bitti. Kanalda kimse kalmadıysa hemen döngünün başına dön
                     if self.kanaldaki_insan_sayisi(channel) == 0:
                         print("[SES] ℹ️ Kanal boşaldı, uyarı durdu. Bot kanalda nöbette.", flush=True)
                         continue
 
-                    # "Eğer kişi çıkmazsa 15 saniye sonra tekrar bu ses oynatılsın"
                     print("[SES] ⏳ Uyarı tamamlandı. 15 saniyelik bekleme başladı...", flush=True)
                     for _ in range(15):
                         await asyncio.sleep(1)
-                        # Beklerken kullanıcı çıkarsa beklemeden döngü başına dön
-                        if self.kanaldaki_insan_sayisi(channel) == 0:
-                            print("[SES] 🚪 Üye 15 saniye dolmadan çıktı.", flush=True)
-                            break
-                        # Saat 12:00 olduysa beklemeden mesai moduna geç
-                        if self.get_aktif_mesai_durumu():
+                        if self.kanaldaki_insan_sayisi(channel) == 0 or self.get_aktif_mesai_durumu():
                             break
 
             except asyncio.CancelledError:
@@ -254,31 +267,27 @@ class DestekSesUyari(commands.Cog):
         """
         Destek kanalına bir üye girdiğinde veya bot kazara atıldığında tetiklenir.
         """
-        # 1. Eğer botun kendisi bağlantısı koptuysa hemen yeniden bağlan
+        # 1. Eğer botun kendisi ise:
         if member.id == self.bot.user.id:
+            # Bot hedef kanalda değilse veya bağlantısı koptuysa 5 saniye gecikmeyle bağlan
             if not after.channel or after.channel.id != DESTEK_BEKLEME_SES_ID:
-                guild = member.guild
-                target_ch = guild.get_channel(DESTEK_BEKLEME_SES_ID)
-                if target_ch:
-                    print("[SES UYARI] ⚠️ Bot ses kanalından ayrıldı veya taşındı! 2 saniye içinde geri bağlanıyor...", flush=True)
-                    await asyncio.sleep(2)
-                    await self.ses_baglantisini_sagla(target_ch)
+                print("[SES UYARI] ⚠️ Bot ses kanalından ayrıldı veya taşındı! 5 saniye sonra yeniden bağlanacak...", flush=True)
+                self._tetikle_gecikmeli_baglan(5)
             return
 
         if member.bot:
             return
 
-        # 2. Gerçek bir kullanıcı Destek Bekleme kanalına girdiyse
+        # 2. Gerçek bir üye Destek Bekleme kanalına katıldıysa
         if after.channel and after.channel.id == DESTEK_BEKLEME_SES_ID:
             print(f"[SES] 👤 {member.display_name} destek bekleme ses kanalına katıldı.", flush=True)
-            # Mesai dışı uykudaki döngüyü anında uyandır
             self.member_joined_event.set()
 
     # =========================================================================
     # SÜREKLİ GÖZETMEN (SUPERVISOR LOOP)
     # =========================================================================
 
-    @tasks.loop(seconds=10)
+    @tasks.loop(seconds=30)
     async def voice_supervisor(self):
         """
         Botun her zaman ses kanalında kalmasını ve ana oynatma görevinin
@@ -295,10 +304,10 @@ class DestekSesUyari(commands.Cog):
         if not channel or not isinstance(channel, discord.VoiceChannel):
             return
 
-        # 1. Bot bağlı değilse bağla
-        voice_client = discord.utils.get(self.bot.voice_clients, guild=guild)
-        if not voice_client or not voice_client.is_connected() or voice_client.channel.id != channel.id:
-            await self.ses_baglantisini_sagla(channel)
+        # 1. Bot bağlı değilse veya kanalda değilse bağla
+        vc = guild.voice_client
+        if not vc or not vc.is_connected() or not vc.channel or vc.channel.id != channel.id:
+            await self._ses_kanalina_baglan()
 
         # 2. Ana ses döngüsü task'ı çalışmıyorsa başlat
         if self.main_task is None or self.main_task.done():
@@ -308,8 +317,10 @@ class DestekSesUyari(commands.Cog):
     async def before_voice_supervisor(self):
         try:
             await self.bot.wait_until_ready()
+            await self._ses_kanalina_baglan()
         except (RuntimeError, Exception):
             pass
+
 
     # =========================================================================
     # YÖNETİM KOMUTLARI: /mesai-ses-durum & /mesai-ses-mod
@@ -335,7 +346,7 @@ class DestekSesUyari(commands.Cog):
         mesai_ici = self.get_aktif_mesai_durumu()
         durum_metin = "🟢 **Mesai İçi (12:00 - 01:00)** — Sürekli Bekleme Müziği Aktif" if mesai_ici else "🔴 **Mesai Dışı (01:00 - 12:00)** — Otomatik 15sn Sesli Uyarı Devrede"
 
-        voice_client = discord.utils.get(self.bot.voice_clients, guild=guild)
+        voice_client = guild.voice_client
         baglanti_durumu = "🟢 Kanala Bağlı & 7/24 Aktif" if (voice_client and voice_client.is_connected()) else "🔴 Bağlı Değil (Bağlanılıyor...)"
 
         parca_1_var = os.path.exists(BEKLEME_MUZIKLERI[0])
@@ -401,7 +412,7 @@ class DestekSesUyari(commands.Cog):
 
         # Çalan müziği kesip yeni modu anında uygulasın
         guild = interaction.guild or self.bot.get_guild(GUILD_ID)
-        voice_client = discord.utils.get(self.bot.voice_clients, guild=guild)
+        voice_client = guild.voice_client
         if voice_client and voice_client.is_playing():
             voice_client.stop()
 
