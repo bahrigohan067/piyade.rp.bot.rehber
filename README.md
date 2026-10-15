@@ -65,7 +65,7 @@ Bu bot, sunucu kanallarındaki görsel düzeni ve akışı bozmamak adına **Dir
 
 | Komut | Yetki | Açıklama |
 |---|---|---|
-| `/rehber-paneli-kur [kanal]` | Yönetim | Belirtilen kanala sabit ve kalıcı Ana Rehber Panelini kurar |
+| `/rehber-paneli-kur [kanal]` | `@|👤KURUCU` | Belirtilen kanala sabit ve kalıcı Ana Rehber Panelini kurar |
 | `/rehber` | Herkes | Rehber panelini doğrudan kullanıcının DM kutusuna gönderir |
-| `/mesai-ses-durum` | Yönetim | Destek ses kanalı canlı durumunu, çalan parçayı ve mesaiyi gösterir |
-| `/mesai-ses-mod [mod]` | Yönetim | Ses sistemini manuel test moduna (Zorunlu Müzik / Zorunlu Uyarı) veya Otomatiğe alır |
+| `/mesai-ses-durum` | `@|👤KURUCU` | Destek ses kanalı canlı durumunu, çalan parçayı ve mesaiyi gösterir |
+| `/mesai-ses-mod [mod]` | `@|👤KURUCU` | Ses sistemini manuel test moduna (Zorunlu Müzik / Zorunlu Uyarı) veya Otomatiğe alır |

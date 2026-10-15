@@ -65,12 +65,18 @@ UST_YONETIM_ROL_ID = 1539167256246747186
 YONETICI_ROL_ID = 1534798061845483694
 YONETIM_EKIBI_ROL_ID = 1537934087166369812
 
+# Yönetim komutlarını yalnızca KURUCU rolü kullanabilir
 YONETIM_ROLLER = [
-    KURUCU_ROL_ID,
-    UST_YONETIM_ROL_ID,
-    YONETICI_ROL_ID,
-    YONETIM_EKIBI_ROL_ID
+    KURUCU_ROL_ID
 ]
+
+def kurucu_mu(member) -> bool:
+    """Kullanıcının @|👤KURUCU rolüne sahip olup olmadığını veya sunucu sahibi olup olmadığını denetler."""
+    if not member or not hasattr(member, "roles"):
+        return False
+    if hasattr(member, "guild") and member.guild and member.id == member.guild.owner_id:
+        return True
+    return any(getattr(r, "id", None) == KURUCU_ROL_ID for r in member.roles)
 
 # Görsel ve Ses Yolları
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

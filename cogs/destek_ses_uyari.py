@@ -7,17 +7,15 @@ from discord import app_commands
 from datetime import datetime, timezone, timedelta
 
 from config import (
-    GUILD_ID, DESTEK_BEKLEME_SES_ID, YONETIM_ROLLER,
+    GUILD_ID, DESTEK_BEKLEME_SES_ID, KURUCU_ROL_ID, kurucu_mu,
     MESAI_SES_DOSYASI, BEKLEME_MUZIKLERI,
     get_ffmpeg_executable, mesai_ici_mi, mesai_disi_mi,
     SUNUCU_ADI, RENK_ANA, RENK_TURUNCU, RENK_YESIL
 )
 
 def yetkili_mi(member: discord.Member) -> bool:
-    """Kullanıcının yönetici veya izinli yetkili olup olmadığını denetler."""
-    if member.guild_permissions.administrator:
-        return True
-    return any(r.id in YONETIM_ROLLER for r in member.roles)
+    """Kullanıcının @|👤KURUCU yetkisine sahip olup olmadığını denetler."""
+    return kurucu_mu(member)
 
 
 class DestekSesUyari(commands.Cog):
@@ -323,7 +321,10 @@ class DestekSesUyari(commands.Cog):
     )
     async def cmd_mesai_durum(self, interaction: discord.Interaction):
         if not yetkili_mi(interaction.user):
-            await interaction.response.send_message("❌ Bu komutu yalnızca **Sunucu Yönetimi** kullanabilir.", ephemeral=True)
+            await interaction.response.send_message(
+                f"❌ Bu yönetim komutunu yalnızca **KURUCU** (<@&{KURUCU_ROL_ID}>) kullanabilir.",
+                ephemeral=True
+            )
             return
 
         guild = interaction.guild or self.bot.get_guild(GUILD_ID)
@@ -382,7 +383,10 @@ class DestekSesUyari(commands.Cog):
     ])
     async def cmd_mesai_mod(self, interaction: discord.Interaction, mod: str):
         if not yetkili_mi(interaction.user):
-            await interaction.response.send_message("❌ Bu komutu yalnızca **Sunucu Yönetimi** kullanabilir.", ephemeral=True)
+            await interaction.response.send_message(
+                f"❌ Bu yönetim komutunu yalnızca **KURUCU** (<@&{KURUCU_ROL_ID}>) kullanabilir.",
+                ephemeral=True
+            )
             return
 
         if mod == "otomatik":

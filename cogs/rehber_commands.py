@@ -6,7 +6,7 @@ from discord import app_commands
 
 from config import (
     SUNUCU_ADI, GUILD_ID, REHBER_PANEL_KANAL_ID,
-    YONETIM_ROLLER, BANNER_PATH
+    KURUCU_ROL_ID, kurucu_mu, BANNER_PATH
 )
 from cogs.rehber_views import (
     KanalRehberPanelView,
@@ -16,10 +16,8 @@ from cogs.rehber_views import (
 )
 
 def yetkili_mi(member: discord.Member) -> bool:
-    """Kullanıcının yönetici veya izinli yetkili olup olmadığını denetler."""
-    if member.guild_permissions.administrator:
-        return True
-    return any(r.id in YONETIM_ROLLER for r in member.roles)
+    """Kullanıcının @|👤KURUCU yetkisine sahip olup olmadığını denetler."""
+    return kurucu_mu(member)
 
 
 class RehberCommands(commands.Cog):
@@ -43,7 +41,7 @@ class RehberCommands(commands.Cog):
     async def cmd_rehber_paneli_kur(self, interaction: discord.Interaction, kanal: discord.TextChannel = None):
         if not yetkili_mi(interaction.user):
             await interaction.response.send_message(
-                "❌ Bu komutu yalnızca **Sunucu Yönetimi** kullanabilir.",
+                f"❌ Bu yönetim komutunu yalnızca **KURUCU** (<@&{KURUCU_ROL_ID}>) kullanabilir.",
                 ephemeral=True
             )
             return
