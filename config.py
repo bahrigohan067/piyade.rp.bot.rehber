@@ -72,9 +72,40 @@ YONETIM_ROLLER = [
     YONETIM_EKIBI_ROL_ID
 ]
 
-# Görsel Yolları
+# Görsel ve Ses Yolları
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BANNER_PATH = os.path.join(BASE_DIR, "assets", "rehber_banner.jpg")
+
+# Ses Dosyaları
+MESAI_SES_DOSYASI = os.path.join(BASE_DIR, "assets", "destek_mesai_disi.mp3")
+BEKLEME_MUZIK_1 = os.path.join(BASE_DIR, "assets", "bekleme_muzik_1.mp3")
+BEKLEME_MUZIK_2 = os.path.join(BASE_DIR, "assets", "bekleme_muzik_2.mp3")
+BEKLEME_MUZIKLERI = [BEKLEME_MUZIK_1, BEKLEME_MUZIK_2]
+
+def get_ffmpeg_executable() -> str:
+    """Windows lokal veya Linux ortamındaki ffmpeg binary yolunu tespit eder."""
+    local_ffmpeg = os.path.join(BASE_DIR, "ffmpeg.exe")
+    if os.path.exists(local_ffmpeg):
+        return local_ffmpeg
+    return "ffmpeg"
+
+def mesai_ici_mi() -> bool:
+    """
+    Türkiye Saati (UTC+3) ile saat öğlen 12:00 ile gece 01:00 arasında ise True döner.
+    (Mesai / canlı destek saatleri: 12:00 <= saat veya saat < 01:00)
+    """
+    from datetime import datetime, timezone, timedelta
+    tz_tr = timezone(timedelta(hours=3))
+    simdi = datetime.now(tz_tr)
+    return simdi.hour >= 12 or simdi.hour < 1
+
+def mesai_disi_mi() -> bool:
+    """
+    Türkiye Saati (UTC+3) ile saat gece 01:00 ile öğlen 12:00 arasında ise True döner.
+    (Mesai / rol saatleri dışı aralık: 01:00 <= saat < 12:00)
+    """
+    return not mesai_ici_mi()
+
 
 # Renk Temaları
 RENK_ANA = 0x2B8CFF       # Canlı Piyade Mavisi
@@ -84,3 +115,4 @@ RENK_KIRMIZI = 0xE74C3C   # Kırmızı (Ceza/Yasak)
 RENK_MOR = 0x9B59B6       # Mor (Çete/İllegal)
 RENK_TURUNCU = 0xE67E22   # Turuncu (Dikkat/Uyarı)
 RENK_KOYU = 0x2F3136      # Koyu Gri (Arkaplan)
+

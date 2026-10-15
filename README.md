@@ -34,6 +34,16 @@ Bu bot, sunucu kanallarındaki görsel düzeni ve akışı bozmamak adına **Dir
 4. **Sohbet Dinleyicisi (Auto-Help):**
    - Yeni üyeler sohbette "nasıl kayıt olunur", "kod nedir", "grup linki", "bilet nasıl açılır" gibi sorular sorduğunda bot nazikçe ve cooldown korumalı olarak rehbere ve ilgili kanallara yönlendirir.
 
+5. **7/24 Kesintisiz Destek Bekleme Ses Yöneticisi (`#1532829788824404274`):**
+   - **Kanal:** Destek Bekleme Ses Kanalı (`#1532829788824404274`). Bot bu kanalda **7/24 kesintisiz bağlı kalır**, asla kanaldan ayrılmaz.
+   - **Mesai İçi Saatler (`12:00 Öğlen - 01:00 Gece`):**
+     - Bot kanalda kalır ve iki adet rahatlatıcı bekleme müziğini (`bekleme_muzik_1.mp3` & `bekleme_muzik_2.mp3`) kesintisiz döngüde (loop) çalar.
+   - **Mesai Dışı Saatler (`01:00 Gece - 12:00 Öğlen`):**
+     - Bekleme müziği durur. Kanalda kimse yokken bot sessizce nöbette bekler.
+     - Bir üye odaya girdiğinde mesai dışı resmi sesli uyarısını (*"Yetkililerimiz çalışma saati dışında desteğe bakamazlar..."*) çalar.
+     - **15 Saniye Tekrarı:** Üye kanalda beklediği sürece ses bittikten sonra 15 saniye bekler ve uyarısı tekrar oynatılır.
+     - Üye çıktığında uyarı durur ve bot sessiz nöbetine devam eder.
+
 ---
 
 ## ⚙️ Kurulum & Railway Dağıtımı
@@ -57,3 +67,5 @@ Bu bot, sunucu kanallarındaki görsel düzeni ve akışı bozmamak adına **Dir
 |---|---|---|
 | `/rehber-paneli-kur [kanal]` | Yönetim | Belirtilen kanala sabit ve kalıcı Ana Rehber Panelini kurar |
 | `/rehber` | Herkes | Rehber panelini doğrudan kullanıcının DM kutusuna gönderir |
+| `/mesai-ses-durum` | Yönetim | Destek ses kanalı canlı durumunu, çalan parçayı ve mesaiyi gösterir |
+| `/mesai-ses-mod [mod]` | Yönetim | Ses sistemini manuel test moduna (Zorunlu Müzik / Zorunlu Uyarı) veya Otomatiğe alır |

@@ -146,6 +146,30 @@ class RehberListener(commands.Cog):
                 pass
             return
 
+        # -------------------------------------------------------------
+        # 5. Bot Etiketlendiğinde (Mention) Rehbere Yönlendirme
+        # -------------------------------------------------------------
+        if self.bot.user in message.mentions:
+            if self.cooldown_var_mi(message.author.id, message.channel.id):
+                return
+            self.cooldown_guncelle(message.author.id, message.channel.id)
+
+            embed = discord.Embed(
+                title=f"📖 {SUNUCU_ADI} • Rehber Hizmetinizde",
+                description=(
+                    f"Merhaba {message.author.mention}! Size nasıl yardımcı olabilirim?\n\n"
+                    f"• 📌 Sabit Ana Rehber Paneli: <#{REHBER_PANEL_KANAL_ID}>\n"
+                    f"• 📬 Rehberi doğrudan DM kutunuza çağırmak için: `/rehber` komutunu kullanabilirsiniz.\n"
+                    f"• 🎫 Destek veya şikayet bildirmek için: <#{TICKET_KANAL_ID}>"
+                ),
+                color=RENK_ANA
+            )
+            try:
+                await message.reply(embed=embed, mention_author=False)
+            except Exception:
+                pass
+            return
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(RehberListener(bot))
