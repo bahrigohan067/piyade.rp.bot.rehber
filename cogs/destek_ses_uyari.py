@@ -114,7 +114,7 @@ class DestekSesUyari(commands.Cog):
                         await vc.disconnect(force=True)
                     except Exception:
                         pass
-                vc = await channel.connect(reconnect=True, self_deaf=True)
+                vc = await channel.connect(reconnect=False, self_deaf=True)
                 print(f"[SES] 🔌 Bot 7/24 ses kanalına bağlandı: {channel.name} ({channel.id})", flush=True)
                 return vc
             except Exception as e:
@@ -269,10 +269,10 @@ class DestekSesUyari(commands.Cog):
         """
         # 1. Eğer botun kendisi ise:
         if member.id == self.bot.user.id:
-            # Bot hedef kanalda değilse veya bağlantısı koptuysa 5 saniye gecikmeyle bağlan
-            if not after.channel or after.channel.id != DESTEK_BEKLEME_SES_ID:
-                print("[SES UYARI] ⚠️ Bot ses kanalından ayrıldı veya taşındı! 5 saniye sonra yeniden bağlanacak...", flush=True)
-                self._tetikle_gecikmeli_baglan(5)
+            # Bot hedef kanaldan gerçekten ayrıldıysa veya başka kanala çekildiyse 3 saniye sonra geri bağlan
+            if before.channel and before.channel.id == DESTEK_BEKLEME_SES_ID and (not after.channel or after.channel.id != DESTEK_BEKLEME_SES_ID):
+                print("[SES UYARI] ⚠️ Bot ses kanalından ayrıldı veya taşındı! 3 saniye sonra yeniden bağlanacak...", flush=True)
+                self._tetikle_gecikmeli_baglan(3)
             return
 
         if member.bot:
