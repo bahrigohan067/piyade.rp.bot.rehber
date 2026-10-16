@@ -158,7 +158,7 @@ Aldığınız her ceza puanı sicilinize işlenir ve toplam puana göre kademeni
 """
 
 # =====================================================================
-# 4. RP TERİMLERİ (RM1 - RM17 Açıklamalar ve Hatalı Rol Örnekleri)
+# 4. RP TERİMLERİ (RM1 - RM18 Açıklamalar ve Hatalı Rol Örnekleri)
 # =====================================================================
 RP_TERIMLERI_METIN = f"""
 # 🎭 ROLEPLAY (RP) TERİMLERİ SÖZLÜĞÜ VE KURALLAR
@@ -217,6 +217,9 @@ Kaliteli bir roleplay deneyimi için tüm terimlerin anlamlarını ve hatalı ro
 
 • **RM17 — Abuse (Açık Suistimali):** Oyun açıklarını veya Safezone sınırlarını kendi lehine suistimal etmek.
   🚫 *Hatalı Örnek:* Safezone çizgisine gir-çık yaparak çatışmada hasar almamaya çalışmak. ➡️ **[5 Puan]**
+
+• **RM18 — SafeZone İhlali:** Safezone (Güvenli Bölge) sınırları içerisinde çatışmaya girmek, silah çekmek, adam vurmak veya soygun yapmak.
+  🚫 *Hatalı Örnek:* Gun Shop, Hastane veya PD önünde/içinde silah çekip ateş açmak veya rehin almak. ➡️ **[2 Puan]**
 """
 
 # =====================================================================

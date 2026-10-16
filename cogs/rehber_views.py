@@ -121,7 +121,7 @@ def build_category_embed(kategori: str, extra_info: str = "") -> discord.Embed:
             RENK_KIRMIZI
         ),
         "rp_terimleri": (
-            "ℹ️ Roleplay Terimleri Sözlüğü (RM1 - RM17)",
+            "ℹ️ Roleplay Terimleri Sözlüğü (RM1 - RM18)",
             RP_TERIMLERI_METIN,
             RENK_ALTIN
         ),
@@ -184,7 +184,7 @@ def get_kanal_paneli_embed() -> discord.Embed:
         "• ℹ️ **Anasayfa & Sunucu Düzeni** *(Tüm Kanalları Göster Ayarı)*\n"
         "• ℹ️ **Genel Sunucu Rehberi** *(Tüm 23 Kanalın Detayları)*\n"
         "• ℹ️ **Tüm Kurallar** *(M1-M13, D1-D3, Y1-Y5 & Ceza Puanları)*\n"
-        "• ℹ️ **RP Terimleri** *(RM1-RM17 Örnekli Açıklamalar)*\n"
+        "• ℹ️ **RP Terimleri** *(RM1-RM18 Örnekli Açıklamalar)*\n"
         "• ℹ️ **Kayıt Sistemi** *(Aşama Aşama Whitelist Kılavuzu)*\n"
         "• ℹ️ **Çete Sistemi** *(Parseller, Savaşlar, 7 Gün Cooldown & Meth)*\n"
         "• ℹ️ **Vs Talep Sistemi** *(PvP & Drive Kapışmaları, Kademe 1-7)*\n"
@@ -234,7 +234,7 @@ class RehberDMSelectMenu(Select):
             ),
             discord.SelectOption(
                 label="RP Terimleri",
-                description="RM1-RM17 terimleri ve hatalı rol örnekleri",
+                description="RM1-RM18 terimleri ve hatalı rol örnekleri",
                 emoji="ℹ️",
                 value="rp_terimleri",
                 default=(aktif_kategori == "rp_terimleri")
